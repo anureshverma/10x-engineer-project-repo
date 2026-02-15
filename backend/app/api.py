@@ -111,8 +111,27 @@ def update_prompt(prompt_id: str, prompt_data: PromptUpdate):
     return storage.update_prompt(prompt_id, updated_prompt)
 
 
-# NOTE: PATCH endpoint is missing! Students need to implement this.
-# It should allow partial updates (only update provided fields)
+@app.patch("/prompts/{prompt_id}", response_model=Prompt)
+def patch_prompt(prompt_id: str, prompt_data: PromptUpdate):
+    existing = storage.get_prompt(prompt_id)
+    if not existing:
+        raise HTTPException(status_code=404, detail="Prompt not found")
+
+    # Update only the provided fields
+    update_data = existing.model_dump()
+    update_data.update(prompt_data.dict(exclude_unset=True))
+
+    # Validate collection if provided
+    if 'collection_id' in update_data and update_data['collection_id']:
+        collection = storage.get_collection(update_data['collection_id'])
+    if not collection:
+            raise HTTPException(status_code=400, detail="Collection not found")
+
+    # Update the updated_at timestamp
+    update_data['updated_at'] = get_current_time()
+
+    updated_prompt = Prompt(**update_data)
+    return storage.update_prompt(prompt_id, updated_prompt)
 
 
 @app.delete("/prompts/{prompt_id}", status_code=204)
