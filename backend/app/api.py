@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from typing import Optional
 
 from app.models import (
-    Prompt, PromptCreate, PromptUpdate,
+    Prompt, PromptCreate, PromptUpdate, PromptPatch,
     Collection, CollectionCreate,
     PromptList, CollectionList, HealthResponse,
     get_current_time
@@ -112,27 +112,30 @@ def update_prompt(prompt_id: str, prompt_data: PromptUpdate):
 
 
 @app.patch("/prompts/{prompt_id}", response_model=Prompt)
-def patch_prompt(prompt_id: str, prompt_data: PromptUpdate):
+def patch_prompt(prompt_id: str, prompt_data: PromptPatch):
     existing = storage.get_prompt(prompt_id)
     if not existing:
         raise HTTPException(status_code=404, detail="Prompt not found")
 
-    # Update only the provided fields
-    update_data = existing.model_dump()
-    update_data.update(prompt_data.dict(exclude_unset=True))
+    update_data = existing.dict()
 
-    # Validate collection if provided
-    if 'collection_id' in update_data and update_data['collection_id']:
-        collection = storage.get_collection(update_data['collection_id'])
-    if not collection:
-            raise HTTPException(status_code=400, detail="Collection not found")
+    # Validate and merge only the provided fields
+    for field in prompt_data.dict(exclude_unset=True):
+        value = getattr(prompt_data, field)
+        if value is not None and value != '' and field != 'collection_id':
+            update_data[field] = value
+        # Validate collection if provided
+        elif field == 'collection_id' and value:
+            collection = storage.get_collection(value)
+            if not collection:
+                raise HTTPException(status_code=400, detail="Collection not found")
+            update_data[field] = value
 
     # Update the updated_at timestamp
     update_data['updated_at'] = get_current_time()
 
     updated_prompt = Prompt(**update_data)
     return storage.update_prompt(prompt_id, updated_prompt)
-
 
 @app.delete("/prompts/{prompt_id}", status_code=204)
 def delete_prompt(prompt_id: str):
