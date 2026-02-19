@@ -1,0 +1,53 @@
+---
+description: Standards for writing and generating documentation
+alwaysApply: true
+---
+
+# Documentation Standards
+
+## Format
+
+- Prefer Markdown for all documentation.
+- Use headings (`#`, `##`, `###`) to organize sections.
+- Use bullet points for lists and key details.
+- Use fenced code blocks with language tags for code examples.
+
+## Required Sections
+
+When documenting functions, modules, APIs, or systems, include the following where relevant:
+
+- **Inputs** — parameters, arguments, or configuration the component accepts.
+- **Outputs** — return values, emitted events, or produced artifacts.
+- **Side effects** — external state changes (DB writes, file I/O, network calls, etc.).
+- **Dependencies** — libraries, services, or modules required.
+- **Usage examples** — concrete code snippets showing typical usage.
+
+## Summary
+
+Every document should end with a short **Summary** section that recaps the key points in 2–4 sentences.
+
+## Example
+
+```markdown
+## `fetchUser(id: string)`
+
+### Inputs
+- `id` — the unique user identifier.
+
+### Outputs
+- Returns a `Promise<User>` with the user object.
+
+### Side Effects
+- Logs the request to the audit service.
+
+### Dependencies
+- `axios`, `audit-logger`
+
+### Usage
+\`\`\`ts
+const user = await fetchUser("abc-123");
+\`\`\`
+
+### Summary
+Fetches a user by ID from the REST API. Logs each call for auditing. Requires `axios` and the `audit-logger` module.
+```
