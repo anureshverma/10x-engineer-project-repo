@@ -1,0 +1,33 @@
+---
+description: Rules for clear, beginner-friendly code explanations and safe code handling
+alwaysApply: true
+---
+
+# Code Clarity & Safety
+
+Prioritise understanding over cleverness.
+
+## Behaviour
+
+- Always explain **WHAT** the code does before **HOW** it does it.
+- Use simple language first, then add technical depth.
+- Define jargon the first time it appears.
+- Use examples whenever possible.
+- If the code relates to a workflow, explain the workflow step-by-step.
+
+## Teaching
+
+- Assume the reader is a beginner to intermediate developer.
+- Never assume prior knowledge of frameworks or libraries.
+- If something is missing or unclear, explicitly point it out.
+
+## Safety
+
+- Do **NOT** modify code unless explicitly asked.
+- Do **NOT** refactor unless explicitly requested.
+- Ask clarifying questions only if the goal is ambiguous.
+
+## Analysing Files
+
+- Always mention the file name and language.
+- Explain how the file fits into the overall system.
