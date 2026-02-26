@@ -31,15 +31,47 @@ To set up the project locally, follow these steps:
         .\venv\Scripts\activate
         ```
 
-4. **Install the required packages**:
+4. **Install the required packages** (from the `backend` directory):
     ```bash
+    cd backend
     pip install -r requirements.txt
     ```
 
 5. **Run the application**:
     ```bash
-    uvicorn backend.app.api:app --reload
+    python main.py
     ```
+    For auto-reload during development: `RELOAD=1 python main.py`
+
+## Docker Setup
+
+You can run the API with Docker or Docker Compose.
+
+### Run with Docker
+
+From the `backend` directory:
+
+```bash
+cd backend
+docker build -t promptlab-api .
+docker run -p 8000:8000 promptlab-api
+```
+
+The API is available at http://localhost:8000. Health check: http://localhost:8000/health.
+
+### Local development with Docker Compose
+
+From the **repository root** (one level above `backend`):
+
+```bash
+docker compose up --build
+```
+
+- Builds the backend image and runs it with port `8000` mapped.
+- Source code is mounted so edits to `main.py` and `app/` are picked up with auto-reload (`RELOAD=1`).
+- API: http://localhost:8000 | Health: http://localhost:8000/health
+
+To run in the background: `docker compose up -d --build`. To rebuild after changing `requirements.txt`: `docker compose up --build`.
 
 ## API Endpoints
 
