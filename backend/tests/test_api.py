@@ -145,6 +145,37 @@ class TestPrompts:
         response = client.post("/prompts", json=body)
         assert response.status_code == 422
 
+    def test_create_prompt_validation_empty_title_returns_422(self, client: TestClient, sample_prompt_data):
+        response = client.post("/prompts", json={**sample_prompt_data, "title": ""})
+        assert response.status_code == 422
+
+    def test_create_prompt_validation_empty_content_returns_422(self, client: TestClient, sample_prompt_data):
+        response = client.post("/prompts", json={**sample_prompt_data, "content": ""})
+        assert response.status_code == 422
+
+    def test_create_prompt_validation_title_too_long_returns_422(self, client: TestClient, sample_prompt_data):
+        response = client.post("/prompts", json={**sample_prompt_data, "title": "x" * 201})
+        assert response.status_code == 422
+
+    def test_create_prompt_validation_description_too_long_returns_422(self, client: TestClient, sample_prompt_data):
+        response = client.post("/prompts", json={**sample_prompt_data, "description": "x" * 501})
+        assert response.status_code == 422
+
+    def test_update_prompt_validation_title_too_long_returns_422(self, client: TestClient, sample_prompt_data):
+        create = client.post("/prompts", json=sample_prompt_data)
+        prompt_id = create.json()["id"]
+        response = client.put(f"/prompts/{prompt_id}", json={
+            "title": "x" * 201,
+            "content": sample_prompt_data["content"],
+        })
+        assert response.status_code == 422
+
+    def test_patch_prompt_validation_empty_title_returns_422(self, client: TestClient, sample_prompt_data):
+        create = client.post("/prompts", json=sample_prompt_data)
+        prompt_id = create.json()["id"]
+        response = client.patch(f"/prompts/{prompt_id}", json={"title": ""})
+        assert response.status_code == 422
+
     def test_list_prompts_filter_by_collection_id(self, client: TestClient, sample_prompt_data, sample_collection_data):
         c1 = client.post("/collections", json=sample_collection_data).json()["id"]
         c2 = client.post("/collections", json={"name": "Other", "description": None}).json()["id"]
@@ -171,6 +202,14 @@ class TestPrompts:
         r_nonexistent = client.get("/prompts", params={"tag_ids": "nonexistent-tag-id"})
         assert r_nonexistent.status_code == 200
         assert r_nonexistent.json()["total"] == 0
+
+    def test_list_prompts_nonexistent_collection_id_returns_empty(self, client: TestClient, sample_prompt_data):
+        """Filtering by non-existent collection_id returns 200 with empty list (no 404)."""
+        client.post("/prompts", json=sample_prompt_data)
+        response = client.get("/prompts", params={"collection_id": "nonexistent-collection"})
+        assert response.status_code == 200
+        assert response.json()["total"] == 0
+        assert response.json()["prompts"] == []
 
     def test_update_prompt_not_found_returns_404(self, client: TestClient, sample_prompt_data):
         response = client.put("/prompts/nonexistent-id", json={
@@ -259,6 +298,14 @@ class TestCollections:
     def test_create_collection_validation_empty_name_returns_422(self, client: TestClient, sample_collection_data):
         response = client.post("/collections", json={"name": "", "description": sample_collection_data["description"]})
         assert response.status_code == 422
+
+    def test_create_collection_validation_name_too_long_returns_422(self, client: TestClient, sample_collection_data):
+        response = client.post("/collections", json={"name": "x" * 101, "description": None})
+        assert response.status_code == 422
+
+    def test_create_collection_validation_description_too_long_returns_422(self, client: TestClient, sample_collection_data):
+        response = client.post("/collections", json={"name": sample_collection_data["name"], "description": "x" * 501})
+        assert response.status_code == 422
     
     def test_create_collection(self, client: TestClient, sample_collection_data):
         response = client.post("/collections", json=sample_collection_data)
@@ -318,6 +365,18 @@ class TestTags:
 
     def test_create_tag_validation_missing_name_returns_422(self, client: TestClient):
         response = client.post("/tags", json={})
+        assert response.status_code == 422
+
+    def test_create_tag_validation_empty_name_returns_422(self, client: TestClient):
+        response = client.post("/tags", json={"name": ""})
+        assert response.status_code == 422
+
+    def test_create_tag_validation_name_too_long_returns_422(self, client: TestClient):
+        response = client.post("/tags", json={"name": "x" * 51})
+        assert response.status_code == 422
+
+    def test_create_tag_validation_slug_too_long_returns_422(self, client: TestClient):
+        response = client.post("/tags", json={"name": "ok", "slug": "x" * 51})
         assert response.status_code == 422
 
     def test_create_tag(self, client: TestClient):
@@ -387,6 +446,12 @@ class TestTags:
         assert response.status_code == 400
         assert "already exists" in response.json().get("detail", "").lower()
 
+    def test_patch_tag_empty_name_returns_422(self, client: TestClient):
+        create = client.post("/tags", json={"name": "original"})
+        tag_id = create.json()["id"]
+        response = client.patch(f"/tags/{tag_id}", json={"name": ""})
+        assert response.status_code == 422
+
     def test_delete_tag_not_found_returns_404(self, client: TestClient):
         response = client.delete("/tags/nonexistent-id")
         assert response.status_code == 404
@@ -410,6 +475,18 @@ class TestPromptTags:
     def test_set_prompt_tags_prompt_not_found_returns_404(self, client: TestClient):
         response = client.put("/prompts/nonexistent-id/tags", json={"tag_ids": []})
         assert response.status_code == 404
+
+    def test_set_prompt_tags_missing_tag_ids_returns_422(self, client: TestClient, sample_prompt_data):
+        prompt_res = client.post("/prompts", json=sample_prompt_data)
+        prompt_id = prompt_res.json()["id"]
+        response = client.put(f"/prompts/{prompt_id}/tags", json={})
+        assert response.status_code == 422
+
+    def test_add_prompt_tag_missing_tag_ids_returns_422(self, client: TestClient, sample_prompt_data):
+        prompt_res = client.post("/prompts", json=sample_prompt_data)
+        prompt_id = prompt_res.json()["id"]
+        response = client.post(f"/prompts/{prompt_id}/tags", json={})
+        assert response.status_code == 422
 
     def test_set_prompt_tags_empty_list_clears_tags(self, client: TestClient, sample_prompt_data):
         prompt_res = client.post("/prompts", json=sample_prompt_data)
