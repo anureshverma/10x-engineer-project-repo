@@ -200,9 +200,8 @@ def patch_prompt(prompt_id: str, prompt_data: PromptPatch):
 
     for field in prompt_data.dict(exclude_unset=True):
         value = getattr(prompt_data, field)
-        if value is not None and value != '' and field != 'collection_id':
+        if value is not None and value != '' and field not in ('collection_id', 'tag_ids'):
             update_data[field] = value
-
         elif field == 'collection_id' and value:
             collection = storage.get_collection(value)
             if not collection:
