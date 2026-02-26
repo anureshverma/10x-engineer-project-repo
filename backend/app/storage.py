@@ -172,16 +172,7 @@ class Storage:
         for prompt in self._prompts.values():
             if tag_id in prompt.tag_ids:
                 new_ids = [tid for tid in prompt.tag_ids if tid != tag_id]
-                updated = Prompt(
-                    id=prompt.id,
-                    title=prompt.title,
-                    content=prompt.content,
-                    description=prompt.description,
-                    collection_id=prompt.collection_id,
-                    tag_ids=new_ids,
-                    created_at=prompt.created_at,
-                    updated_at=prompt.updated_at,
-                )
+                updated = _prompt_with(prompt, tag_ids=new_ids)
                 self._prompts[prompt.id] = updated
         del self._tags[tag_id]
         return True
@@ -198,16 +189,7 @@ class Storage:
         prompt = self._prompts.get(prompt_id)
         if not prompt:
             return
-        updated = Prompt(
-            id=prompt.id,
-            title=prompt.title,
-            content=prompt.content,
-            description=prompt.description,
-            collection_id=prompt.collection_id,
-            tag_ids=list(tag_ids),
-            created_at=prompt.created_at,
-            updated_at=prompt.updated_at,
-        )
+        updated = _prompt_with(prompt, tag_ids=list(tag_ids))
         self._prompts[prompt_id] = updated
 
     def add_prompt_tag(self, prompt_id: str, tag_id: str) -> bool:
@@ -238,11 +220,18 @@ class Storage:
 
     # ============== Utility ==============
 
-    def clear(self):
+    def clear(self) -> None:
         """Clears all stored prompts, collections, and tags."""
         self._prompts.clear()
         self._collections.clear()
         self._tags.clear()
+
+
+def _prompt_with(prompt: Prompt, **overrides: object) -> Prompt:
+    """Return a new Prompt with the same fields as prompt and optional overrides."""
+    data = prompt.model_dump()
+    data.update(overrides)
+    return Prompt(**data)
 
 
 # Global storage instance

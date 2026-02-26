@@ -26,5 +26,14 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
+      - name: Install Ruff
+        run: pip install ruff
+
+      - name: Lint with Ruff
+        run: ruff check app
+
+      - name: Check format with Ruff
+        run: ruff format --check app
+
       - name: Run pytest with coverage
         run: pytest --cov=app --cov-report=term-missing --cov-fail-under=80

@@ -1,9 +1,11 @@
 """FastAPI routes for PromptLab"""
 
+from typing import List, Optional
+
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from typing import Optional, List
 
+from app import __version__
 from app.models import (
     Prompt, PromptCreate, PromptUpdate, PromptPatch,
     Collection, CollectionCreate,
@@ -14,12 +16,12 @@ from app.models import (
 )
 from app.storage import storage
 from app.utils import (
-    sort_prompts_by_date,
     filter_prompts_by_collection,
     filter_prompts_by_tags,
     search_prompts,
+    slug_from_name,
+    sort_prompts_by_date,
 )
-from app import __version__
 
 
 app = FastAPI(
@@ -36,6 +38,29 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+def _validate_tag_ids(tag_ids: List[str]) -> None:
+    """Raise HTTPException 400 if any tag id is not found."""
+    for tid in tag_ids:
+        if not storage.get_tag(tid):
+            raise HTTPException(
+                status_code=400, detail="One or more tag ids not found"
+            )
+
+
+def _ensure_collection_exists(collection_id: str) -> None:
+    """Raise HTTPException 400 if collection does not exist."""
+    if not storage.get_collection(collection_id):
+        raise HTTPException(status_code=400, detail="Collection not found")
+
+
+def _get_prompt_or_404(prompt_id: str) -> Prompt:
+    """Return prompt or raise HTTPException 404."""
+    prompt = storage.get_prompt(prompt_id)
+    if prompt is None:
+        raise HTTPException(status_code=404, detail="Prompt not found")
+    return prompt
 
 
 # ============== Health Check ==============
@@ -98,11 +123,8 @@ def get_prompt(prompt_id: str):
         HTTPException: If the prompt is not found.
     """
     prompt = storage.get_prompt(prompt_id)
-    
-
     if prompt is None:
         raise HTTPException(status_code=404, detail="Prompt not found")
-    
     return prompt
 
 
@@ -121,13 +143,9 @@ def create_prompt(prompt_data: PromptCreate):
         HTTPException: If the collection does not exist.
     """
     if prompt_data.collection_id:
-        collection = storage.get_collection(prompt_data.collection_id)
-        if not collection:
-            raise HTTPException(status_code=400, detail="Collection not found")
+        _ensure_collection_exists(prompt_data.collection_id)
     tag_ids = getattr(prompt_data, "tag_ids", None) or []
-    for tid in tag_ids:
-        if not storage.get_tag(tid):
-            raise HTTPException(status_code=400, detail="One or more tag ids not found")
+    _validate_tag_ids(tag_ids)
     prompt = Prompt(**prompt_data.model_dump())
     return storage.create_prompt(prompt)
 
@@ -149,19 +167,11 @@ def update_prompt(prompt_id: str, prompt_data: PromptUpdate):
     existing = storage.get_prompt(prompt_id)
     if not existing:
         raise HTTPException(status_code=404, detail="Prompt not found")
-    
-
     if prompt_data.collection_id:
-        collection = storage.get_collection(prompt_data.collection_id)
-        if not collection:
-            raise HTTPException(status_code=400, detail="Collection not found")
-    
-
+        _ensure_collection_exists(prompt_data.collection_id)
     tag_ids = getattr(prompt_data, "tag_ids", None)
     if tag_ids is not None:
-        for tid in tag_ids:
-            if not storage.get_tag(tid):
-                raise HTTPException(status_code=400, detail="One or more tag ids not found")
+        _validate_tag_ids(tag_ids)
     else:
         tag_ids = existing.tag_ids
     updated_prompt = Prompt(
@@ -194,25 +204,18 @@ def patch_prompt(prompt_id: str, prompt_data: PromptPatch):
     existing = storage.get_prompt(prompt_id)
     if not existing:
         raise HTTPException(status_code=404, detail="Prompt not found")
-
-    update_data = existing.dict()
-
-
-    for field in prompt_data.dict(exclude_unset=True):
-        value = getattr(prompt_data, field)
-        if value is not None and value != '' and field not in ('collection_id', 'tag_ids'):
+    update_data = existing.model_dump()
+    patch_dict = prompt_data.model_dump(exclude_unset=True)
+    for field, value in patch_dict.items():
+        if field == "collection_id" and value:
+            _ensure_collection_exists(value)
             update_data[field] = value
-        elif field == 'collection_id' and value:
-            collection = storage.get_collection(value)
-            if not collection:
-                raise HTTPException(status_code=400, detail="Collection not found")
+        elif field == "tag_ids" and value is not None:
+            _validate_tag_ids(value)
             update_data[field] = value
-        elif field == 'tag_ids' and value is not None:
-            for tid in value:
-                if not storage.get_tag(tid):
-                    raise HTTPException(status_code=400, detail="One or more tag ids not found")
+        elif value is not None and value != "":
             update_data[field] = value
-    update_data['updated_at'] = get_current_time()
+    update_data["updated_at"] = get_current_time()
     updated_prompt = Prompt(**update_data)
     return storage.update_prompt(prompt_id, updated_prompt)
 
@@ -229,7 +232,6 @@ def delete_prompt(prompt_id: str):
     """
     if not storage.delete_prompt(prompt_id):
         raise HTTPException(status_code=404, detail="Prompt not found")
-    return None
 
 
 # ============== Collection Endpoints ==============
@@ -289,12 +291,9 @@ def delete_collection(collection_id: str):
         HTTPException: If the collection is not found.
     """
     for prompt in storage.get_prompts_by_collection(collection_id):
-
         storage.delete_prompt(prompt.id)
     if not storage.delete_collection(collection_id):
         raise HTTPException(status_code=404, detail="Collection not found")
-
-    return None
 
 
 # ============== Tags ==============
@@ -320,9 +319,7 @@ def create_tag(tag_data: TagCreate):
     """Create a new tag. Slug is derived from name if not provided."""
     if storage.get_tag_by_name(tag_data.name):
         raise HTTPException(status_code=400, detail="Tag with this name already exists")
-    slug = tag_data.slug
-    if not slug and tag_data.name:
-        slug = tag_data.name.strip().lower().replace(" ", "-")
+    slug = tag_data.slug or (slug_from_name(tag_data.name) if tag_data.name else "")
     tag = Tag(
         id=generate_id(),
         name=tag_data.name,
@@ -357,13 +354,14 @@ def delete_tag(tag_id: str):
         raise HTTPException(status_code=404, detail="Tag not found")
 
 
+
+
 # ============== Prompt Tags ==============
 
 @app.get("/prompts/{prompt_id}/tags", response_model=TagList)
 def get_prompt_tags(prompt_id: str):
     """List tags assigned to a prompt."""
-    if not storage.get_prompt(prompt_id):
-        raise HTTPException(status_code=404, detail="Prompt not found")
+    _get_prompt_or_404(prompt_id)
     tags = storage.get_tags_for_prompt(prompt_id)
     return TagList(tags=tags, total=len(tags))
 
@@ -371,11 +369,8 @@ def get_prompt_tags(prompt_id: str):
 @app.put("/prompts/{prompt_id}/tags")
 def set_prompt_tags(prompt_id: str, body: AssignTagsRequest):
     """Set the tags on a prompt. Replaces existing tags."""
-    if not storage.get_prompt(prompt_id):
-        raise HTTPException(status_code=404, detail="Prompt not found")
-    for tid in body.tag_ids:
-        if not storage.get_tag(tid):
-            raise HTTPException(status_code=400, detail="One or more tag ids not found")
+    _get_prompt_or_404(prompt_id)
+    _validate_tag_ids(body.tag_ids)
     storage.set_prompt_tags(prompt_id, body.tag_ids)
     return {"tag_ids": body.tag_ids}
 
@@ -383,11 +378,8 @@ def set_prompt_tags(prompt_id: str, body: AssignTagsRequest):
 @app.post("/prompts/{prompt_id}/tags")
 def add_prompt_tag(prompt_id: str, body: AssignTagsRequest):
     """Add one or more tags to a prompt."""
-    if not storage.get_prompt(prompt_id):
-        raise HTTPException(status_code=404, detail="Prompt not found")
-    for tid in body.tag_ids:
-        if not storage.get_tag(tid):
-            raise HTTPException(status_code=400, detail="One or more tag ids not found")
+    _get_prompt_or_404(prompt_id)
+    _validate_tag_ids(body.tag_ids)
     for tid in body.tag_ids:
         storage.add_prompt_tag(prompt_id, tid)
     tags = storage.get_tags_for_prompt(prompt_id)
@@ -397,6 +389,5 @@ def add_prompt_tag(prompt_id: str, body: AssignTagsRequest):
 @app.delete("/prompts/{prompt_id}/tags/{tag_id}", status_code=204)
 def remove_prompt_tag(prompt_id: str, tag_id: str):
     """Remove a tag from a prompt."""
-    if not storage.get_prompt(prompt_id):
-        raise HTTPException(status_code=404, detail="Prompt not found")
+    _get_prompt_or_404(prompt_id)
     storage.remove_prompt_tag(prompt_id, tag_id)

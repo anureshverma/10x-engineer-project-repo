@@ -1,11 +1,19 @@
 """Utility functions for PromptLab"""
 
+import re
 from typing import List
+
 from app.models import Prompt
 
 
+def slug_from_name(name: str) -> str:
+    """Derive a URL-friendly slug from a name (e.g. for tags)."""
+    return name.strip().lower().replace(" ", "-")
 
-def sort_prompts_by_date(prompts, descending=True):
+
+def sort_prompts_by_date(
+    prompts: List[Prompt], descending: bool = True
+) -> List[Prompt]:
     """Sort prompts by their creation date.
 
     Args:
@@ -67,9 +75,10 @@ def search_prompts(prompts: List[Prompt], query: str) -> List[Prompt]:
     ]
 
 
+# The following helpers are for future use (e.g. prompt validation or docs).
 def validate_prompt_content(content: str) -> bool:
     """Check if prompt content is valid.
-    
+
     A valid prompt should:
     - Not be empty
     - Not be just whitespace
@@ -82,10 +91,9 @@ def validate_prompt_content(content: str) -> bool:
 
 def extract_variables(content: str) -> List[str]:
     """Extract template variables from prompt content.
-    
+
     Variables are in the format {{variable_name}}
     """
-    import re
-    pattern = r'\{\{(\w+)\}\}'
+    pattern = r"\{\{(\w+)\}\}"
     return re.findall(pattern, content)
 

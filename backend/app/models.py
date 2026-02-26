@@ -1,9 +1,10 @@
 """Pydantic models for PromptLab"""
 
-from datetime import datetime
-from typing import Optional, List
-from pydantic import BaseModel, Field
+from datetime import datetime, timezone
+from typing import List, Optional
 from uuid import uuid4
+
+from pydantic import BaseModel, ConfigDict, Field
 
 
 def generate_id() -> str:
@@ -13,16 +14,12 @@ def generate_id() -> str:
 
 def get_current_time() -> datetime:
     """Gets the current UTC time."""
-    return datetime.utcnow()
+    return datetime.now(timezone.utc)
 
 
 # ============== Prompt Models ==============
 
 class PromptBase(BaseModel):
-
-
-
-
     """Base model for Prompt.
 
     Attributes:
@@ -55,10 +52,6 @@ class PromptUpdate(PromptBase):
 
 
 class PromptPatch(BaseModel):
-
-
-
-
     """Model for partially updating a prompt.
 
     Attributes:
@@ -75,9 +68,6 @@ class PromptPatch(BaseModel):
 
 
 class Prompt(PromptBase):
-
-
-
     """Full model representation of a Prompt.
 
     Attributes:
@@ -89,15 +79,12 @@ class Prompt(PromptBase):
     created_at: datetime = Field(default_factory=get_current_time, description="The timestamp when the prompt was created.")
     updated_at: datetime = Field(default_factory=get_current_time, description="The timestamp when the prompt was last updated.")
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # ============== Collection Models ==============
 
 class CollectionBase(BaseModel):
-
-
     """Base model for Collection.
 
     Attributes:
@@ -117,8 +104,6 @@ class CollectionCreate(CollectionBase):
 
 
 class Collection(CollectionBase):
-
-
     """Full model representation of a Collection.
 
     Attributes:
@@ -128,8 +113,7 @@ class Collection(CollectionBase):
     id: str = Field(default_factory=generate_id, description="The unique identifier of the collection.")
     created_at: datetime = Field(default_factory=get_current_time, description="The timestamp when the collection was created.")
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # ============== Tag Models ==============
@@ -152,8 +136,7 @@ class Tag(BaseModel):
     color: Optional[str] = Field(None, description="Hex (e.g. #ff0000) or color name for UI.")
     created_at: Optional[datetime] = Field(default_factory=get_current_time, description="When the tag was created.")
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class TagCreate(BaseModel):
@@ -185,8 +168,6 @@ class AssignTagsRequest(BaseModel):
 # ============== Response Models ==============
 
 class PromptList(BaseModel):
-
-
     """Model for a list of prompts.
 
     Attributes:
@@ -198,8 +179,6 @@ class PromptList(BaseModel):
 
 
 class CollectionList(BaseModel):
-
-
     """Model for a list of collections.
 
     Attributes:
@@ -211,8 +190,6 @@ class CollectionList(BaseModel):
 
 
 class HealthResponse(BaseModel):
-
-
     """Model for the health status response.
 
     Attributes:
