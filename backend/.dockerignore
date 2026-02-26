@@ -1,0 +1,16 @@
+# Tests and dev artifacts
+tests/
+.pytest_cache/
+.coverage
+*.pyc
+__pycache__/
+
+# Git and IDE
+.git/
+.gitignore
+*.md
+
+# Local and env
+.env
+.venv/
+venv/
