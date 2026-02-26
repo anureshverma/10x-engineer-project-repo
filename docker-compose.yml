@@ -1,0 +1,24 @@
+# Local development setup for PromptLab
+# Run: docker compose up --build
+# API: http://localhost:8000  |  Health: http://localhost:8000/health
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      RELOAD: "1"
+    volumes:
+      - ./backend/main.py:/app/main.py
+      - ./backend/app:/app/app
+    # Run as root in dev so mounted source is readable (image still uses appuser in prod)
+    user: "0:0"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
