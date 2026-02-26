@@ -177,3 +177,137 @@ class TestCollections:
             # Prompt exists with orphaned collection_id
             assert prompts[0]["collection_id"] == collection_id
             # After fix, collection_id should be None or prompt should be deleted
+
+
+class TestTags:
+    """Tests for tag CRUD endpoints."""
+
+    def test_create_tag(self, client: TestClient):
+        response = client.post("/tags", json={"name": "backend"})
+        assert response.status_code == 201
+        data = response.json()
+        assert data["name"] == "backend"
+        assert "id" in data
+        assert data.get("slug") == "backend"
+
+    def test_create_tag_with_slug(self, client: TestClient):
+        response = client.post("/tags", json={"name": "Front End", "slug": "frontend"})
+        assert response.status_code == 201
+        data = response.json()
+        assert data["name"] == "Front End"
+        assert data["slug"] == "frontend"
+
+    def test_create_tag_duplicate_name(self, client: TestClient):
+        client.post("/tags", json={"name": "dup"})
+        response = client.post("/tags", json={"name": "dup"})
+        assert response.status_code == 400
+        assert "already exists" in response.json().get("detail", "").lower()
+
+    def test_list_tags(self, client: TestClient):
+        client.post("/tags", json={"name": "a"})
+        client.post("/tags", json={"name": "b"})
+        response = client.get("/tags")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["total"] == 2
+        assert len(data["tags"]) == 2
+
+    def test_get_tag(self, client: TestClient):
+        create = client.post("/tags", json={"name": "getme"})
+        tag_id = create.json()["id"]
+        response = client.get(f"/tags/{tag_id}")
+        assert response.status_code == 200
+        assert response.json()["name"] == "getme"
+
+    def test_get_tag_not_found(self, client: TestClient):
+        response = client.get("/tags/nonexistent-id")
+        assert response.status_code == 404
+
+    def test_patch_tag(self, client: TestClient):
+        create = client.post("/tags", json={"name": "original"})
+        tag_id = create.json()["id"]
+        response = client.patch(f"/tags/{tag_id}", json={"name": "patched"})
+        assert response.status_code == 200
+        assert response.json()["name"] == "patched"
+
+    def test_delete_tag(self, client: TestClient):
+        create = client.post("/tags", json={"name": "todelete"})
+        tag_id = create.json()["id"]
+        response = client.delete(f"/tags/{tag_id}")
+        assert response.status_code == 204
+        assert client.get(f"/tags/{tag_id}").status_code == 404
+
+
+class TestPromptTags:
+    """Tests for prompt–tag assignment and filtering."""
+
+    def test_set_and_get_prompt_tags(self, client: TestClient, sample_prompt_data):
+        prompt_res = client.post("/prompts", json=sample_prompt_data)
+        prompt_id = prompt_res.json()["id"]
+        tag_res = client.post("/tags", json={"name": "t1"})
+        tag_id = tag_res.json()["id"]
+        client.put(f"/prompts/{prompt_id}/tags", json={"tag_ids": [tag_id]})
+        response = client.get(f"/prompts/{prompt_id}/tags")
+        assert response.status_code == 200
+        assert response.json()["total"] == 1
+        assert response.json()["tags"][0]["id"] == tag_id
+
+    def test_add_prompt_tag(self, client: TestClient, sample_prompt_data):
+        prompt_res = client.post("/prompts", json=sample_prompt_data)
+        prompt_id = prompt_res.json()["id"]
+        t1 = client.post("/tags", json={"name": "a"}).json()["id"]
+        t2 = client.post("/tags", json={"name": "b"}).json()["id"]
+        client.put(f"/prompts/{prompt_id}/tags", json={"tag_ids": [t1]})
+        client.post(f"/prompts/{prompt_id}/tags", json={"tag_ids": [t2]})
+        tags = client.get(f"/prompts/{prompt_id}/tags").json()["tags"]
+        assert len(tags) == 2
+
+    def test_remove_prompt_tag(self, client: TestClient, sample_prompt_data):
+        prompt_res = client.post("/prompts", json=sample_prompt_data)
+        prompt_id = prompt_res.json()["id"]
+        tag_res = client.post("/tags", json={"name": "r1"})
+        tag_id = tag_res.json()["id"]
+        client.put(f"/prompts/{prompt_id}/tags", json={"tag_ids": [tag_id]})
+        client.delete(f"/prompts/{prompt_id}/tags/{tag_id}")
+        tags = client.get(f"/prompts/{prompt_id}/tags").json()["tags"]
+        assert len(tags) == 0
+
+    def test_filter_prompts_by_tag_and(self, client: TestClient, sample_prompt_data):
+        t1 = client.post("/tags", json={"name": "x"}).json()["id"]
+        t2 = client.post("/tags", json={"name": "y"}).json()["id"]
+        p1 = client.post("/prompts", json={**sample_prompt_data, "title": "P1", "tag_ids": [t1, t2]}).json()["id"]
+        client.post("/prompts", json={**sample_prompt_data, "title": "P2", "tag_ids": [t1]})
+        response = client.get("/prompts", params={"tag_ids": f"{t1},{t2}", "tag_match": "all"})
+        assert response.status_code == 200
+        assert response.json()["total"] == 1
+        assert response.json()["prompts"][0]["id"] == p1
+
+    def test_filter_prompts_by_tag_any(self, client: TestClient, sample_prompt_data):
+        t1 = client.post("/tags", json={"name": "a"}).json()["id"]
+        t2 = client.post("/tags", json={"name": "b"}).json()["id"]
+        client.post("/prompts", json={**sample_prompt_data, "title": "P1", "tag_ids": [t1]})
+        client.post("/prompts", json={**sample_prompt_data, "title": "P2", "tag_ids": [t2]})
+        response = client.get("/prompts", params={"tag_ids": f"{t1},{t2}", "tag_match": "any"})
+        assert response.status_code == 200
+        assert response.json()["total"] == 2
+
+    def test_delete_tag_cascades(self, client: TestClient, sample_prompt_data):
+        tag_res = client.post("/tags", json={"name": "cascade"})
+        tag_id = tag_res.json()["id"]
+        prompt_res = client.post("/prompts", json={**sample_prompt_data, "tag_ids": [tag_id]})
+        prompt_id = prompt_res.json()["id"]
+        client.delete(f"/tags/{tag_id}")
+        prompt = client.get(f"/prompts/{prompt_id}").json()
+        assert tag_id not in prompt.get("tag_ids", [])
+
+    def test_invalid_tag_id_on_create_prompt(self, client: TestClient, sample_prompt_data):
+        response = client.post("/prompts", json={**sample_prompt_data, "tag_ids": ["bad-tag-id"]})
+        assert response.status_code == 400
+        assert "not found" in response.json().get("detail", "").lower()
+
+    def test_invalid_tag_id_on_set_tags(self, client: TestClient, sample_prompt_data):
+        prompt_res = client.post("/prompts", json=sample_prompt_data)
+        prompt_id = prompt_res.json()["id"]
+        response = client.put(f"/prompts/{prompt_id}/tags", json={"tag_ids": ["bad-tag-id"]})
+        assert response.status_code == 400
+        assert "not found" in response.json().get("detail", "").lower()

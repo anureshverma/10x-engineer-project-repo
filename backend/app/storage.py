@@ -5,14 +5,15 @@ In a production environment, this would be replaced with a database.
 """
 
 from typing import Dict, List, Optional
-from app.models import Prompt, Collection
+from app.models import Prompt, Collection, Tag
 
 
 class Storage:
     def __init__(self):
-        """Initializes the Storage with empty dictionaries for prompts and collections."""
+        """Initializes the Storage with empty dictionaries for prompts, collections, and tags."""
         self._prompts: Dict[str, Prompt] = {}
         self._collections: Dict[str, Collection] = {}
+        self._tags: Dict[str, Tag] = {}
     
     # ============== Prompt Operations ==============
     
@@ -133,13 +134,115 @@ class Storage:
             List[Prompt]: A list of prompts that belong to the specified collection.
         """
         return [p for p in self._prompts.values() if p.collection_id == collection_id]
-    
+
+    # ============== Tag Operations ==============
+
+    def create_tag(self, tag: Tag) -> Tag:
+        """Stores a new tag. Enforces unique name."""
+        self._tags[tag.id] = tag
+        return tag
+
+    def get_tag(self, tag_id: str) -> Optional[Tag]:
+        """Returns tag by id."""
+        return self._tags.get(tag_id)
+
+    def get_tag_by_name(self, name: str) -> Optional[Tag]:
+        """Returns tag by name (for uniqueness check)."""
+        name_lower = name.strip().lower()
+        for tag in self._tags.values():
+            if tag.name and tag.name.strip().lower() == name_lower:
+                return tag
+        return None
+
+    def get_all_tags(self) -> List[Tag]:
+        """Returns all tags."""
+        return list(self._tags.values())
+
+    def update_tag(self, tag_id: str, tag: Tag) -> Optional[Tag]:
+        """Updates an existing tag."""
+        if tag_id not in self._tags:
+            return None
+        self._tags[tag_id] = tag
+        return tag
+
+    def delete_tag(self, tag_id: str) -> bool:
+        """Removes tag and removes tag_id from every prompt's tag_ids."""
+        if tag_id not in self._tags:
+            return False
+        for prompt in self._prompts.values():
+            if tag_id in prompt.tag_ids:
+                new_ids = [tid for tid in prompt.tag_ids if tid != tag_id]
+                updated = Prompt(
+                    id=prompt.id,
+                    title=prompt.title,
+                    content=prompt.content,
+                    description=prompt.description,
+                    collection_id=prompt.collection_id,
+                    tag_ids=new_ids,
+                    created_at=prompt.created_at,
+                    updated_at=prompt.updated_at,
+                )
+                self._prompts[prompt.id] = updated
+        del self._tags[tag_id]
+        return True
+
+    def get_tags_for_prompt(self, prompt_id: str) -> List[Tag]:
+        """Resolves prompt's tag_ids to Tag objects."""
+        prompt = self._prompts.get(prompt_id)
+        if not prompt or not prompt.tag_ids:
+            return []
+        return [self._tags[tid] for tid in prompt.tag_ids if tid in self._tags]
+
+    def set_prompt_tags(self, prompt_id: str, tag_ids: List[str]) -> None:
+        """Sets prompt's tag_ids. Caller must validate tag_ids exist."""
+        prompt = self._prompts.get(prompt_id)
+        if not prompt:
+            return
+        updated = Prompt(
+            id=prompt.id,
+            title=prompt.title,
+            content=prompt.content,
+            description=prompt.description,
+            collection_id=prompt.collection_id,
+            tag_ids=list(tag_ids),
+            created_at=prompt.created_at,
+            updated_at=prompt.updated_at,
+        )
+        self._prompts[prompt_id] = updated
+
+    def add_prompt_tag(self, prompt_id: str, tag_id: str) -> bool:
+        """Adds one tag to prompt. Returns False if prompt or tag not found."""
+        if prompt_id not in self._prompts or tag_id not in self._tags:
+            return False
+        prompt = self._prompts[prompt_id]
+        if tag_id in prompt.tag_ids:
+            return True
+        new_ids = list(prompt.tag_ids) + [tag_id]
+        self.set_prompt_tags(prompt_id, new_ids)
+        return True
+
+    def remove_prompt_tag(self, prompt_id: str, tag_id: str) -> bool:
+        """Removes one tag from prompt. Returns True if removed or already absent."""
+        prompt = self._prompts.get(prompt_id)
+        if not prompt:
+            return False
+        if tag_id not in prompt.tag_ids:
+            return True
+        new_ids = [tid for tid in prompt.tag_ids if tid != tag_id]
+        self.set_prompt_tags(prompt_id, new_ids)
+        return True
+
+    def get_prompts_by_tag(self, tag_id: str) -> List[Prompt]:
+        """Returns all prompts that have this tag_id in their tag_ids."""
+        return [p for p in self._prompts.values() if tag_id in p.tag_ids]
+
     # ============== Utility ==============
-    
+
     def clear(self):
-        """Clears all stored prompts and collections."""
+        """Clears all stored prompts, collections, and tags."""
         self._prompts.clear()
         self._collections.clear()
+        self._tags.clear()
 
 
 # Global storage instance

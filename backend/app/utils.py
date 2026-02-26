@@ -30,6 +30,26 @@ def filter_prompts_by_collection(prompts: List[Prompt], collection_id: str) -> L
     """
     return [p for p in prompts if p.collection_id == collection_id]
 
+def filter_prompts_by_tags(
+    prompts: List[Prompt], tag_ids: List[str], match_all: bool = True
+) -> List[Prompt]:
+    """Filter prompts that have all (AND) or any (OR) of the given tag_ids.
+
+    Args:
+        prompts: List of Prompt objects (must have tag_ids attribute).
+        tag_ids: Tag IDs to filter by.
+        match_all: If True, prompt must have all tag_ids (AND). If False, any (OR).
+
+    Returns:
+        Filtered list of prompts.
+    """
+    if not tag_ids:
+        return list(prompts)
+    if match_all:
+        return [p for p in prompts if all(tid in getattr(p, "tag_ids", []) for tid in tag_ids)]
+    return [p for p in prompts if any(tid in getattr(p, "tag_ids", []) for tid in tag_ids)]
+
+
 def search_prompts(prompts: List[Prompt], query: str) -> List[Prompt]:
     """Search prompts by a query string.
 
