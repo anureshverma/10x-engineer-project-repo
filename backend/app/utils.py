@@ -1,7 +1,6 @@
 """Utility functions for PromptLab"""
 
 import re
-from typing import List
 
 from app.models import Prompt
 
@@ -12,8 +11,8 @@ def slug_from_name(name: str) -> str:
 
 
 def sort_prompts_by_date(
-    prompts: List[Prompt], descending: bool = True
-) -> List[Prompt]:
+    prompts: list[Prompt], descending: bool = True
+) -> list[Prompt]:
     """Sort prompts by their creation date.
 
     Args:
@@ -26,7 +25,7 @@ def sort_prompts_by_date(
     # Sort based on 'created_at' attribute
     return sorted(prompts, key=lambda prompt: prompt.created_at, reverse=descending)
 
-def filter_prompts_by_collection(prompts: List[Prompt], collection_id: str) -> List[Prompt]:
+def filter_prompts_by_collection(prompts: list[Prompt], collection_id: str) -> list[Prompt]:
     """Filter prompts by a specific collection ID.
 
     Args:
@@ -39,8 +38,8 @@ def filter_prompts_by_collection(prompts: List[Prompt], collection_id: str) -> L
     return [p for p in prompts if p.collection_id == collection_id]
 
 def filter_prompts_by_tags(
-    prompts: List[Prompt], tag_ids: List[str], match_all: bool = True
-) -> List[Prompt]:
+    prompts: list[Prompt], tag_ids: list[str], match_all: bool = True
+) -> list[Prompt]:
     """Filter prompts that have all (AND) or any (OR) of the given tag_ids.
 
     Args:
@@ -58,7 +57,7 @@ def filter_prompts_by_tags(
     return [p for p in prompts if any(tid in getattr(p, "tag_ids", []) for tid in tag_ids)]
 
 
-def search_prompts(prompts: List[Prompt], query: str) -> List[Prompt]:
+def search_prompts(prompts: list[Prompt], query: str) -> list[Prompt]:
     """Search prompts by a query string.
 
     Args:
@@ -89,7 +88,7 @@ def validate_prompt_content(content: str) -> bool:
     return len(content.strip()) >= 10
 
 
-def extract_variables(content: str) -> List[str]:
+def extract_variables(content: str) -> list[str]:
     """Extract template variables from prompt content.
 
     Variables are in the format {{variable_name}}

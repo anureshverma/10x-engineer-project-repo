@@ -4,16 +4,16 @@ This module provides simple in-memory storage for prompts and collections.
 In a production environment, this would be replaced with a database.
 """
 
-from typing import Dict, List, Optional
-from app.models import Prompt, Collection, Tag
+
+from app.models import Collection, Prompt, Tag
 
 
 class Storage:
     def __init__(self):
         """Initializes the Storage with empty dictionaries for prompts, collections, and tags."""
-        self._prompts: Dict[str, Prompt] = {}
-        self._collections: Dict[str, Collection] = {}
-        self._tags: Dict[str, Tag] = {}
+        self._prompts: dict[str, Prompt] = {}
+        self._collections: dict[str, Collection] = {}
+        self._tags: dict[str, Tag] = {}
     
     # ============== Prompt Operations ==============
     
@@ -29,7 +29,7 @@ class Storage:
         self._prompts[prompt.id] = prompt
         return prompt
     
-    def get_prompt(self, prompt_id: str) -> Optional[Prompt]:
+    def get_prompt(self, prompt_id: str) -> Prompt | None:
         """Retrieves a prompt by ID.
 
         Args:
@@ -40,7 +40,7 @@ class Storage:
         """
         return self._prompts.get(prompt_id)
     
-    def get_all_prompts(self) -> List[Prompt]:
+    def get_all_prompts(self) -> list[Prompt]:
         """Retrieves all stored prompts.
 
         Returns:
@@ -48,7 +48,7 @@ class Storage:
         """
         return list(self._prompts.values())
     
-    def update_prompt(self, prompt_id: str, prompt: Prompt) -> Optional[Prompt]:
+    def update_prompt(self, prompt_id: str, prompt: Prompt) -> Prompt | None:
         """Updates an existing prompt.
 
         Args:
@@ -91,7 +91,7 @@ class Storage:
         self._collections[collection.id] = collection
         return collection
     
-    def get_collection(self, collection_id: str) -> Optional[Collection]:
+    def get_collection(self, collection_id: str) -> Collection | None:
         """Retrieves a collection by ID.
 
         Args:
@@ -102,7 +102,7 @@ class Storage:
         """
         return self._collections.get(collection_id)
     
-    def get_all_collections(self) -> List[Collection]:
+    def get_all_collections(self) -> list[Collection]:
         """Retrieves all stored collections.
 
         Returns:
@@ -124,7 +124,7 @@ class Storage:
             return True
         return False
     
-    def get_prompts_by_collection(self, collection_id: str) -> List[Prompt]:
+    def get_prompts_by_collection(self, collection_id: str) -> list[Prompt]:
         """Retrieves all prompts that belong to a specified collection.
 
         Args:
@@ -142,11 +142,11 @@ class Storage:
         self._tags[tag.id] = tag
         return tag
 
-    def get_tag(self, tag_id: str) -> Optional[Tag]:
+    def get_tag(self, tag_id: str) -> Tag | None:
         """Returns tag by id."""
         return self._tags.get(tag_id)
 
-    def get_tag_by_name(self, name: str) -> Optional[Tag]:
+    def get_tag_by_name(self, name: str) -> Tag | None:
         """Returns tag by name (for uniqueness check)."""
         name_lower = name.strip().lower()
         for tag in self._tags.values():
@@ -154,11 +154,11 @@ class Storage:
                 return tag
         return None
 
-    def get_all_tags(self) -> List[Tag]:
+    def get_all_tags(self) -> list[Tag]:
         """Returns all tags."""
         return list(self._tags.values())
 
-    def update_tag(self, tag_id: str, tag: Tag) -> Optional[Tag]:
+    def update_tag(self, tag_id: str, tag: Tag) -> Tag | None:
         """Updates an existing tag."""
         if tag_id not in self._tags:
             return None
@@ -177,14 +177,14 @@ class Storage:
         del self._tags[tag_id]
         return True
 
-    def get_tags_for_prompt(self, prompt_id: str) -> List[Tag]:
+    def get_tags_for_prompt(self, prompt_id: str) -> list[Tag]:
         """Resolves prompt's tag_ids to Tag objects."""
         prompt = self._prompts.get(prompt_id)
         if not prompt or not prompt.tag_ids:
             return []
         return [self._tags[tid] for tid in prompt.tag_ids if tid in self._tags]
 
-    def set_prompt_tags(self, prompt_id: str, tag_ids: List[str]) -> None:
+    def set_prompt_tags(self, prompt_id: str, tag_ids: list[str]) -> None:
         """Sets prompt's tag_ids. Caller must validate tag_ids exist."""
         prompt = self._prompts.get(prompt_id)
         if not prompt:
@@ -214,7 +214,7 @@ class Storage:
         self.set_prompt_tags(prompt_id, new_ids)
         return True
 
-    def get_prompts_by_tag(self, tag_id: str) -> List[Prompt]:
+    def get_prompts_by_tag(self, tag_id: str) -> list[Prompt]:
         """Returns all prompts that have this tag_id in their tag_ids."""
         return [p for p in self._prompts.values() if tag_id in p.tag_ids]
 

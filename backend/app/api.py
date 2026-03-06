@@ -1,18 +1,27 @@
 """FastAPI routes for PromptLab"""
 
-from typing import List, Optional
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 from app import __version__
 from app.models import (
-    Prompt, PromptCreate, PromptUpdate, PromptPatch,
-    Collection, CollectionCreate,
-    PromptList, CollectionList, HealthResponse,
-    Tag, TagCreate, TagPatch, TagList, AssignTagsRequest,
-    get_current_time,
+    AssignTagsRequest,
+    Collection,
+    CollectionCreate,
+    CollectionList,
+    HealthResponse,
+    Prompt,
+    PromptCreate,
+    PromptList,
+    PromptPatch,
+    PromptUpdate,
+    Tag,
+    TagCreate,
+    TagList,
+    TagPatch,
     generate_id,
+    get_current_time,
 )
 from app.storage import storage
 from app.utils import (
@@ -22,7 +31,6 @@ from app.utils import (
     slug_from_name,
     sort_prompts_by_date,
 )
-
 
 app = FastAPI(
     title="PromptLab API",
@@ -40,7 +48,7 @@ app.add_middleware(
 )
 
 
-def _validate_tag_ids(tag_ids: List[str]) -> None:
+def _validate_tag_ids(tag_ids: list[str]) -> None:
     """Raise HTTPException 400 if any tag id is not found."""
     for tid in tag_ids:
         if not storage.get_tag(tid):
@@ -79,10 +87,10 @@ def health_check():
 
 @app.get("/prompts", response_model=PromptList)
 def list_prompts(
-    collection_id: Optional[str] = None,
-    search: Optional[str] = None,
-    tag_ids: Optional[str] = None,
-    tag_match: Optional[str] = None,
+    collection_id: str | None = None,
+    search: str | None = None,
+    tag_ids: str | None = None,
+    tag_match: str | None = None,
 ):
     """List prompts with optional filtering and searching.
 
