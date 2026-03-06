@@ -1,6 +1,5 @@
 """FastAPI routes for PromptLab"""
 
-
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -35,7 +34,7 @@ from app.utils import (
 app = FastAPI(
     title="PromptLab API",
     description="AI Prompt Engineering Platform",
-    version=__version__
+    version=__version__,
 )
 
 # CORS middleware
@@ -52,9 +51,7 @@ def _validate_tag_ids(tag_ids: list[str]) -> None:
     """Raise HTTPException 400 if any tag id is not found."""
     for tid in tag_ids:
         if not storage.get_tag(tid):
-            raise HTTPException(
-                status_code=400, detail="One or more tag ids not found"
-            )
+            raise HTTPException(status_code=400, detail="One or more tag ids not found")
 
 
 def _ensure_collection_exists(collection_id: str) -> None:
@@ -73,6 +70,7 @@ def _get_prompt_or_404(prompt_id: str) -> Prompt:
 
 # ============== Health Check ==============
 
+
 @app.get("/health", response_model=HealthResponse)
 def health_check():
     """Check the health of the API service.
@@ -84,6 +82,7 @@ def health_check():
 
 
 # ============== Prompt Endpoints ==============
+
 
 @app.get("/prompts", response_model=PromptList)
 def list_prompts(
@@ -138,7 +137,6 @@ def get_prompt(prompt_id: str):
 
 @app.post("/prompts", response_model=Prompt, status_code=201)
 def create_prompt(prompt_data: PromptCreate):
-
     """Create a new prompt.
 
     Args:
@@ -244,6 +242,7 @@ def delete_prompt(prompt_id: str):
 
 # ============== Collection Endpoints ==============
 
+
 @app.get("/collections", response_model=CollectionList)
 def list_collections():
     """List all collections.
@@ -273,6 +272,7 @@ def get_collection(collection_id: str):
         raise HTTPException(status_code=404, detail="Collection not found")
     return collection
 
+
 @app.post("/collections", response_model=Collection, status_code=201)
 def create_collection(collection_data: CollectionCreate):
     """Create a new collection.
@@ -289,7 +289,6 @@ def create_collection(collection_data: CollectionCreate):
 
 @app.delete("/collections/{collection_id}", status_code=204)
 def delete_collection(collection_id: str):
-
     """Delete a collection by its ID.
 
     Args:
@@ -305,6 +304,7 @@ def delete_collection(collection_id: str):
 
 
 # ============== Tags ==============
+
 
 @app.get("/tags", response_model=TagList)
 def list_tags():
@@ -349,7 +349,9 @@ def patch_tag(tag_id: str, tag_data: TagPatch):
     if "name" in updates and updates["name"]:
         other = storage.get_tag_by_name(updates["name"])
         if other and other.id != tag_id:
-            raise HTTPException(status_code=400, detail="Tag with this name already exists")
+            raise HTTPException(
+                status_code=400, detail="Tag with this name already exists"
+            )
     for key, value in updates.items():
         setattr(existing, key, value)
     return storage.update_tag(tag_id, existing)
@@ -362,9 +364,8 @@ def delete_tag(tag_id: str):
         raise HTTPException(status_code=404, detail="Tag not found")
 
 
-
-
 # ============== Prompt Tags ==============
+
 
 @app.get("/prompts/{prompt_id}/tags", response_model=TagList)
 def get_prompt_tags(prompt_id: str):

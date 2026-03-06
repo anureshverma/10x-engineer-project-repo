@@ -25,7 +25,10 @@ def sort_prompts_by_date(
     # Sort based on 'created_at' attribute
     return sorted(prompts, key=lambda prompt: prompt.created_at, reverse=descending)
 
-def filter_prompts_by_collection(prompts: list[Prompt], collection_id: str) -> list[Prompt]:
+
+def filter_prompts_by_collection(
+    prompts: list[Prompt], collection_id: str
+) -> list[Prompt]:
     """Filter prompts by a specific collection ID.
 
     Args:
@@ -36,6 +39,7 @@ def filter_prompts_by_collection(prompts: list[Prompt], collection_id: str) -> l
         List[Prompt]: A list of prompts that belong to the specified collection.
     """
     return [p for p in prompts if p.collection_id == collection_id]
+
 
 def filter_prompts_by_tags(
     prompts: list[Prompt], tag_ids: list[str], match_all: bool = True
@@ -53,8 +57,14 @@ def filter_prompts_by_tags(
     if not tag_ids:
         return list(prompts)
     if match_all:
-        return [p for p in prompts if all(tid in getattr(p, "tag_ids", []) for tid in tag_ids)]
-    return [p for p in prompts if any(tid in getattr(p, "tag_ids", []) for tid in tag_ids)]
+        return [
+            p
+            for p in prompts
+            if all(tid in getattr(p, "tag_ids", []) for tid in tag_ids)
+        ]
+    return [
+        p for p in prompts if any(tid in getattr(p, "tag_ids", []) for tid in tag_ids)
+    ]
 
 
 def search_prompts(prompts: list[Prompt], query: str) -> list[Prompt]:
@@ -68,9 +78,10 @@ def search_prompts(prompts: list[Prompt], query: str) -> list[Prompt]:
     """
     query_lower = query.lower()
     return [
-        p for p in prompts
-        if query_lower in p.title.lower() or
-           (p.description and query_lower in p.description.lower())
+        p
+        for p in prompts
+        if query_lower in p.title.lower()
+        or (p.description and query_lower in p.description.lower())
     ]
 
 
@@ -95,4 +106,3 @@ def extract_variables(content: str) -> list[str]:
     """
     pattern = r"\{\{(\w+)\}\}"
     return re.findall(pattern, content)
-

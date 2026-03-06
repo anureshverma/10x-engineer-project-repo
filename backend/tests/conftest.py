@@ -26,14 +26,11 @@ def sample_prompt_data():
     return {
         "title": "Code Review Prompt",
         "content": "Review the following code and provide feedback:\n\n{{code}}",
-        "description": "A prompt for AI code review"
+        "description": "A prompt for AI code review",
     }
 
 
 @pytest.fixture
 def sample_collection_data():
     """Sample collection data for testing."""
-    return {
-        "name": "Development",
-        "description": "Prompts for development tasks"
-    }
+    return {"name": "Development", "description": "Prompts for development tasks"}
